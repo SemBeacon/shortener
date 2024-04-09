@@ -1,0 +1,16 @@
+{
+    "applications": [
+        {
+            "id": "example",
+            "name": "Example Application",
+            "key": "test123",
+            "maxLength": 5,
+            "url": "https://sembeacon.org/s/",
+            "characters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$-_.+!*'(),"
+        }
+    ],
+    "port": "4899",
+    "log": {
+        "level": "debug"
+    }
+}
