@@ -5,7 +5,7 @@
             "name": "Example Application",
             "key": "test123",
             "maxLength": 5,
-            "url": "https://sembeacon.org/s/",
+            "url": "https://s.sembeacon.org/",
             "characters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$-_.+!*'(),"
         }
     ],

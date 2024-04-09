@@ -124,7 +124,7 @@ export class App {
                 this.app.get('/shorten', (req: express.Request, res: express.Response) => {
                     this.onShortenRequest(req, res);
                 });
-                this.app.all('/s/:id', (req: express.Request, res: express.Response) => {
+                this.app.all('/s/:app/:id', (req: express.Request, res: express.Response) => {
                     this.onResolveRequest(req, res);
                 });
     
@@ -144,7 +144,12 @@ export class App {
             res.status(500).send({ error: 'Please provide a short code!' });
             return;
         }
-        this.resolveIdentifier(code).then((uri) => {
+        const app = this.getApplicationById(req.params.app);
+        if (!app) {
+            res.status(500).type('json').send({ error: 'Application identifier not found!' });
+            return;
+        }
+        this.resolveIdentifier(app, code).then((uri) => {
             if (uri === null) {
                 res.status(404).send({ error: 'Short code not found!' });
                 return;
@@ -159,7 +164,7 @@ export class App {
 
     onShortenRequest(req: express.Request, res: express.Response): void {
         const api = req.query.api as string;
-        const app = this.getApplication(api);
+        const app = this.getApplicationByKey(api);
         if (!app) {
             res.status(500).type('json').send({ error: 'API key not found!' });
             return;
@@ -171,7 +176,7 @@ export class App {
         }
         // Check cache if this URL is already shortened
         let identifier = '';
-        this.resolveURI(uri).then((result) => {
+        this.resolveURI(app, uri).then((result) => {
             if (result !== null) {
                 const shortUri = app.url + (app.url.endsWith('/') ? '' : '/') + result;
                 res.status(200).type('json').send(shortUri);
@@ -181,7 +186,7 @@ export class App {
             }
         }).then((id) => {
             identifier = id;
-            return this.setIdentifier(identifier, uri);
+            return this.setIdentifier(app, identifier, uri);
         }).then(() => {
             const shortUri = app.url + (app.url.endsWith('/') ? '' : '/') + identifier;
             this.logger.debug(`Shortened ${uri} to ${shortUri}`);
@@ -194,31 +199,35 @@ export class App {
         });
     }
 
-    getApplication(key: string): Application {
+    getApplicationByKey(key: string): Application {
         return this.config.applications.find((app) => app.key === key);
     }
 
-    setIdentifier(identifier: string, uri: string): Promise<void> {
+    getApplicationById(id: string): Application {
+        return this.config.applications.find((app) => app.id === id);
+    }
+
+    setIdentifier(app: Application, identifier: string, uri: string): Promise<void> {
         return new Promise((resolve, reject) => {
-            this.client.set(`short:${identifier}`, uri).then(() => {
-                return this.client.set(`uri:${uri}`, identifier);
+            this.client.set(`${app.id.toLowerCase()}:short:${identifier}`, uri).then(() => {
+                return this.client.set(`${app.id.toLowerCase()}:uri:${uri}`, identifier);
             }).then(() => {
                 resolve();
             }).catch(reject);
         });
     }
 
-    resolveURI(uri: string): Promise<string> {
+    resolveURI(app: Application, uri: string): Promise<string> {
         return new Promise((resolve, reject) => {
-            this.client.get(`uri:${uri}`).then((result) => {
+            this.client.get(`${app.id.toLowerCase()}:uri:${uri}`).then((result) => {
                 resolve(result);
             }).catch(reject);
         });
     }
 
-    resolveIdentifier(identifier: string): Promise<string> {
+    resolveIdentifier(app: Application, identifier: string): Promise<string> {
         return new Promise((resolve, reject) => {
-            this.client.get(`short:${identifier}`).then((result) => {
+            this.client.get(`${app.id.toLowerCase()}:short:${identifier}`).then((result) => {
                 resolve(result);
             }).catch(reject);
         });
@@ -228,7 +237,7 @@ export class App {
         return new Promise((resolve, reject) => {
             let identifier = this.makeIdentifier(app.characters, app.maxLength);
             // If it is, try again
-            this.resolveIdentifier(identifier).then((result) => {
+            this.resolveIdentifier(app, identifier).then((result) => {
                 if (result !== null) {
                     return this.getUnusedIdentifier(app);
                 }
