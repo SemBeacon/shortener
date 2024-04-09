@@ -106,7 +106,7 @@ export class App {
                     }),
                 );
                 this.app.disable('etag');
-                this.app.all('/', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+                this.app.all('*', (req: express.Request, res: express.Response, next: express.NextFunction) => {
                     // Set CORS headers
                     res.header('access-control-allow-private-network', 'true');
                     res.header('access-control-allow-origin', '*');
