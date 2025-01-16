@@ -35,4 +35,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: sembeacon/shortener:latest, sembeacon/shortener:${{ steps.pkg.outputs.PACKAGE_VERSION }}
+          tags: sembeacon/shortener:latest, sembeacon/shortener:${{ env.PACKAGE_VERSION }}
