@@ -16,11 +16,16 @@ yarn install
 
 #### Reverse Proxy
 You will have to configure a reverse proxy to direct to the following URLs:
-- your-server.com/shorten **->** /api/shorten
-- your-short-url.com/ **->** /
+- `your-server.com/shorten` **->** `127.0.0.1:4899/shorten/<app>`
+- `your-short-url.com` **->** `127.0.0.1:4899/s/<app>`
+where `<app>` is the application ID.
 
 #### Environment Variables
-This URL shortener requires Redis to function.
+This URL shortener requires Redis to function. Redis is used to store the shortened URLs. The following environment variables are required:
+- `REDIS_USER`: The username for the Redis server.
+- `REDIS_PASSWORD`: The password for the Redis server.
+- `REDIS_HOST`: The host of the Redis server.
+- `REDIS_PORT`: The port of the Redis server.
 
 ### Configuration
 ```json
@@ -31,7 +36,8 @@ This URL shortener requires Redis to function.
             "name": "Example Application",
             "key": "test123",
             "maxLength": 5,
-            "url": "https://sembeacon.org/s/"
+            "url": "https://s.sembeacon.org/",
+            "characters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$-_.+!*'(),"
         }
     ],
     "port": "4899",
@@ -41,13 +47,41 @@ This URL shortener requires Redis to function.
 }
 ```
 
+#### `id`
+A unique identifier for the application.
+
+#### `name`
+The name of the application for logging purposes.
+
+#### `key`
+The key to use for the application. This key is required to shorten URLs. If possible, try to keep this key secret.
+
 #### `url`
 The URL prefix to use for the shortener.
 
 #### `maxLength`
 The maximum length of random characters to append to the `url`.
 
+#### `characters`
+The characters to use for the random string. By default it will use all URI-safe characters.
+
+### API
+1. Shorten an URL
+```
+GET http://localhost:4899/shorten/example?api=test123&uri=https://maximvdw.be
+```
+2. Response
+```json
+https://s.sembeacon.org/AkGLs
+```
+3. Access the shortened URL
+(local URL: `http://localhost:4899/s/example/AkGLs`)
+
 ### Docker
+A docker file is available on [Docker Hub](https://hub.docker.com/r/sembeacon/shortener/tags). You can run the following command to start the server:
+```bash
+docker run -d -p 4899:4899 -e REDIS_USER=redis -e REDIS_PASSWORD=redis -e REDIS_HOST=redis -e REDIS_PORT=6379 sembeacon/shortener
+```
 
 ## Contributors
 The framework is open source and is mainly developed by PhD Student Maxim Van de Wynckel as part of his research towards *Interoperable and Discoverable Indoor Positioning Systems* under the supervision of Prof. Dr. Beat Signer.
@@ -56,7 +90,7 @@ The framework is open source and is mainly developed by PhD Student Maxim Van de
 Use of OpenHPS, SemBeacon, contributions and feedback is highly appreciated. Please read our [contributing guidelines](CONTRIBUTING.md) for more information.
 
 ## License
-Copyright (C) 2019-2024 Maxim Van de Wynckel & Vrije Universiteit Brussel
+Copyright (C) 2019-2025 Maxim Van de Wynckel & Vrije Universiteit Brussel
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 

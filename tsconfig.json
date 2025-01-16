@@ -17,7 +17,7 @@
   /* Required for workers */
   "compilerOptions": {
     "target": "es6",
-    "module": "commonjs",
+    "module": "ESNext",
     "moduleResolution": "node",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,

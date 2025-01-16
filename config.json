@@ -7,6 +7,13 @@
             "maxLength": 5,
             "url": "https://s.sembeacon.org/",
             "characters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$-_.+!*'(),"
+        }, {
+            "id": "example2",
+            "name": "Example Application 2",
+            "key": "test123",
+            "maxLength": 3,
+            "url": "https://s.maximvdw.be/",
+            "characters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$-_.+!*'(),"
         }
     ],
     "port": "4899",
