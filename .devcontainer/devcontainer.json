@@ -1,0 +1,20 @@
+{
+    "name": "@sembeacon/shortener",
+    "image": "mcr.microsoft.com/vscode/devcontainers/javascript-node:22",
+    "features": {
+        "docker-in-docker": "latest"
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.shell.linux": "/bin/bash"
+            }
+        }
+    },
+    "postCreateCommand": "npm install",
+    "forwardPorts": [3000],
+    "mounts": [
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    ],
+    "remoteUser": "node"
+}

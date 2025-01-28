@@ -71,7 +71,7 @@ The characters to use for the random string. By default it will use all URI-safe
 GET http://localhost:4899/shorten/example?api=test123&uri=https://maximvdw.be
 ```
 2. Response
-```json
+```text
 https://s.sembeacon.org/AkGLs
 ```
 3. Access the shortened URL
@@ -82,6 +82,7 @@ A docker file is available on [Docker Hub](https://hub.docker.com/r/sembeacon/sh
 ```bash
 docker run -d -p 4899:4899 -e REDIS_USER=redis -e REDIS_PASSWORD=redis -e REDIS_HOST=redis -e REDIS_PORT=6379 sembeacon/shortener
 ```
+Override the `config.json` file located in `/opt/shortener/config.json` with your own configuration.
 
 ## Contributors
 The framework is open source and is mainly developed by PhD Student Maxim Van de Wynckel as part of his research towards *Interoperable and Discoverable Indoor Positioning Systems* under the supervision of Prof. Dr. Beat Signer.
