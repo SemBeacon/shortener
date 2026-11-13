@@ -1,4 +1,4 @@
-FROM node:20.11.1-slim
+FROM node:22-slim
 COPY . /opt/shortener
 WORKDIR /opt/shortener
 RUN yarn install
