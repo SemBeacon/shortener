@@ -88,11 +88,12 @@ Per-application rate limit, applied per client IP and shared through Redis:
 ```json
 "rateLimit": {
     "windowSeconds": 60,
-    "max": 60
+    "max": 300
 }
 ```
 
-Default: 60 requests per 60 seconds.
+Default: 300 requests per 60 seconds. This is deliberately generous so an
+unconfigured deployment does not throttle existing clients.
 
 ### Security
 

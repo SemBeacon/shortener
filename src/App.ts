@@ -9,7 +9,7 @@ import { ShortenRequestError, generateIdentifier, validateShortenUri } from './s
 import { createClient, RedisClientType } from 'redis';
 
 const DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60;
-const DEFAULT_RATE_LIMIT_MAX = 60;
+const DEFAULT_RATE_LIMIT_MAX = 300;
 
 /**
  * SemBeacon URL Shortener
