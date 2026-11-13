@@ -119,6 +119,8 @@ export class App {
                         }),
                     );
                     this.app.disable('etag');
+                    // One reverse proxy (nginx) terminates TLS and forwards X-Forwarded-For.
+                    this.app.set('trust proxy', 1);
                     this.app.all('*', (req: express.Request, res: express.Response, next: express.NextFunction) => {
                         // Set CORS headers
                         res.header('access-control-allow-origin', '*');
