@@ -37,7 +37,12 @@ This URL shortener requires Redis to function. Redis is used to store the shorte
             "key": "test123",
             "maxLength": 5,
             "url": "https://s.sembeacon.org/",
-            "characters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$-_.+!*'(),"
+            "characters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$-_.+!*'(),",
+            "allowedSchemes": ["https:", "http:"],
+            "rateLimit": {
+                "windowSeconds": 60,
+                "max": 60
+            }
         }
     ],
     "port": "4899",
@@ -54,7 +59,9 @@ A unique identifier for the application.
 The name of the application for logging purposes.
 
 #### `key`
-The key to use for the application. This key is required to shorten URLs. If possible, try to keep this key secret.
+Public client identifier used by the application. It is required to shorten
+URLs, but it is not a secret: it ships with the client. Use the rate limit to
+contain abuse and rotate a key if it is misused.
 
 #### `url`
 The URL prefix to use for the shortener.
@@ -64,6 +71,39 @@ The maximum length of random characters to append to the `url`.
 
 #### `characters`
 The characters to use for the random string. By default it will use all URI-safe characters.
+Identifiers are generated with a cryptographically secure random source.
+
+#### `allowedSchemes`
+Accepted URI schemes. Default: `["https:", "http:"]`. Other schemes
+(`file:`, `javascript:`, `data:` and so on) are always rejected.
+
+#### `allowDomains`
+Optional allow list of hostnames that this application may shorten, for example
+`["sembeacon.org", "example.org"]`. Subdomains are included. When omitted, any
+public host is allowed, so existing clients keep working.
+
+#### `rateLimit`
+Per-application rate limit, applied per client IP and shared through Redis:
+
+```json
+"rateLimit": {
+    "windowSeconds": 60,
+    "max": 60
+}
+```
+
+Default: 60 requests per 60 seconds.
+
+### Security
+
+- Only absolute `http`/`https` URIs without credentials are accepted.
+- Loopback, private, link-local and reserved IP addresses and local hostnames
+  are rejected, and a link may never point at the shortener itself.
+- Requests are rate limited per application and client IP.
+- Logs contain the request path only, never the query string (which holds the
+  API key and the target URI).
+- Stored URIs are checked again before a redirect, so legacy rows cannot turn
+  into a non-HTTP redirect.
 
 ### API
 1. Shorten an URL

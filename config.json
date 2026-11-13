@@ -6,7 +6,12 @@
             "key": "test123",
             "maxLength": 5,
             "url": "https://s.sembeacon.org/",
-            "characters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$-_.+!*'(),"
+            "characters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$-_.+!*'(),",
+            "allowedSchemes": ["https:", "http:"],
+            "rateLimit": {
+                "windowSeconds": 60,
+                "max": 60
+            }
         }, {
             "id": "example2",
             "name": "Example Application 2",
