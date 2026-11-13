@@ -106,10 +106,62 @@ unconfigured deployment does not throttle existing clients.
 - Stored URIs are checked again before a redirect, so legacy rows cannot turn
   into a non-HTTP redirect.
 
+### Play Integrity (optional)
+
+The official app can attach a Play Integrity token to a shortening request.
+This is **per application and non-blocking**: other services, older clients,
+the web build and Google outages all keep using the anonymous tier.
+
+```json
+"integrity": {
+    "enabled": true,
+    "packageName": "org.sembeacon",
+    "certificateDigests": ["<Play App Signing SHA-256>"],
+    "requiredDeviceVerdicts": ["MEETS_DEVICE_INTEGRITY"],
+    "maxAgeSeconds": 120,
+    "verifiedRateLimit": {
+        "windowSeconds": 60,
+        "max": 1200
+    }
+}
+```
+
+- `certificateDigests` must be the **Play App Signing** certificate (Play
+  Console → App integrity), not the upload key. Matching ignores case and
+  colons.
+- Requests send `X-Integrity-Token` and `X-Request-Timestamp` (milliseconds).
+- The client hashes this exact payload (SHA-256, base64url) and passes it as
+  the standard integrity request hash:
+
+  ```
+  sembeacon-shorten-v1
+  <api key>
+  <uri exactly as sent>
+  <timestamp>
+  ```
+
+- The server decodes the token with
+  `playintegrity.googleapis.com/v1/<package>:decodeIntegrityToken` using
+  application default credentials (`GOOGLE_APPLICATION_CREDENTIALS` or the
+  workload identity of the deployment). The service account needs the
+  `https://www.googleapis.com/auth/playintegrity` scope.
+- A verified request gets `verifiedRateLimit`; everything else gets
+  `rateLimit`. A missing, invalid or unverifiable token **never** produces an
+  error, so other clients are unaffected.
+- Tokens are single use (Redis, 10 minutes) and verdicts older than
+  `maxAgeSeconds` are rejected.
+
 ### API
 1. Shorten an URL
 ```
 GET http://localhost:4899/shorten/example?api=test123&uri=https://maximvdw.be
+```
+
+On Android the official app adds:
+
+```
+X-Integrity-Token: <Play Integrity token>
+X-Request-Timestamp: <milliseconds>
 ```
 2. Response
 ```text

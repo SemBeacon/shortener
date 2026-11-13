@@ -3,9 +3,11 @@ import logger from 'winston';
 import expressWinston from 'express-winston';
 import 'winston-daily-rotate-file';
 import chalk from 'chalk';
+import crypto from 'node:crypto';
 import { Configuration, loadConfiguration, validateConfiguration } from './models/Configuration.model.js';
-import { Application } from './models/Application.model.js';
+import { Application, RateLimit } from './models/Application.model.js';
 import { ShortenRequestError, generateIdentifier, validateShortenUri } from './security/uri.js';
+import { canonicalPayload, decodeIntegrityToken, evaluateVerdict, hashPayload } from './integrity.js';
 import { createClient, RedisClientType } from 'redis';
 
 const DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60;
@@ -227,8 +229,13 @@ export class App {
             return;
         }
 
-        if (!(await this.checkRateLimit(app, req.ip))) {
-            res.header('Retry-After', String(app.rateLimit?.windowSeconds ?? DEFAULT_RATE_LIMIT_WINDOW_SECONDS));
+        // Play Integrity is an optional, non-blocking signal: an absent, invalid
+        // or unverifiable token still gets the anonymous tier, so other clients
+        // and Google outages never break the shortener.
+        const verified = await this.verifyIntegrity(app, api, rawUri, req);
+        const limit = verified ? app.integrity?.verifiedRateLimit : app.rateLimit;
+        if (!(await this.checkRateLimit(app, req.ip, verified ? 'verified' : 'anonymous', limit))) {
+            res.header('Retry-After', String(limit?.windowSeconds ?? DEFAULT_RATE_LIMIT_WINDOW_SECONDS));
             res.status(429).send({ error: 'Too many requests!' });
             return;
         }
@@ -284,15 +291,84 @@ export class App {
     }
 
     /**
+     * Verify an optional Play Integrity token. Never throws and never blocks:
+     * a failure only drops the request to the anonymous rate limit tier.
+     * @param app Application configuration
+     * @param apiKey Application key from the query string
+     * @param uri Target URI exactly as the client sent it
+     * @param req Incoming request
+     */
+    private async verifyIntegrity(
+        app: Application,
+        apiKey: string,
+        uri: string,
+        req: express.Request,
+    ): Promise<boolean> {
+        const config = app.integrity;
+        if (!config?.enabled) {
+            return false;
+        }
+        const token = req.header('x-integrity-token');
+        const timestamp = req.header('x-request-timestamp');
+        if (!token || !timestamp || !/^\d{10,16}$/.test(timestamp)) {
+            logger.debug(`No integrity token for app '${app.id}', using the anonymous tier`);
+            return false;
+        }
+        // A token is single use. Reserve it before the call to Google so two
+        // concurrent requests cannot both spend the quota.
+        if (!(await this.reserveToken(token))) {
+            logger.warn(`Reused integrity token for app '${app.id}', using the anonymous tier`);
+            return false;
+        }
+        try {
+            const payload = await decodeIntegrityToken(token, config.packageName);
+            const expectedHash = hashPayload(canonicalPayload(apiKey, uri, timestamp));
+            const result = evaluateVerdict(payload, expectedHash, config);
+            if (result.verified) {
+                logger.debug(`Integrity verified for app '${app.id}' (${result.deviceVerdicts.join(', ')})`);
+                return true;
+            }
+            logger.debug(`Integrity rejected for app '${app.id}': ${result.reason}`);
+        } catch (error) {
+            // Google unavailable, credentials missing, malformed token: stay anonymous.
+            logger.warn(`Integrity check unavailable for app '${app.id}', using the anonymous tier`, error);
+        }
+        return false;
+    }
+
+    /**
+     * Reserve a token for single use in Redis.
+     * @param token Integrity token
+     */
+    private async reserveToken(token: string): Promise<boolean> {
+        const key = `integrity:token:${crypto.createHash('sha256').update(token).digest('hex')}`;
+        try {
+            const result = await this.client.set(key, '1', { NX: true, EX: 600 });
+            return result === 'OK';
+        } catch (error) {
+            // Redis outage: do not penalise the client.
+            logger.error('Could not reserve integrity token', error);
+            return true;
+        }
+    }
+
+    /**
      * Redis-backed rate limit shared by all cluster workers.
      * @param app Application that owns the key
      * @param ip Client IP
+     * @param tier Verification tier, kept in its own bucket
+     * @param limit Rate limit configuration for this tier
      */
-    private async checkRateLimit(app: Application, ip: string | undefined): Promise<boolean> {
-        const windowSeconds = Math.max(1, app.rateLimit?.windowSeconds ?? DEFAULT_RATE_LIMIT_WINDOW_SECONDS);
-        const max = Math.max(1, app.rateLimit?.max ?? DEFAULT_RATE_LIMIT_MAX);
+    private async checkRateLimit(
+        app: Application,
+        ip: string | undefined,
+        tier: 'verified' | 'anonymous',
+        limit?: RateLimit,
+    ): Promise<boolean> {
+        const windowSeconds = Math.max(1, limit?.windowSeconds ?? DEFAULT_RATE_LIMIT_WINDOW_SECONDS);
+        const max = Math.max(1, limit?.max ?? DEFAULT_RATE_LIMIT_MAX);
         const window = Math.floor(Date.now() / (windowSeconds * 1000));
-        const key = `${app.id.toLowerCase()}:ratelimit:${ip ?? 'unknown'}:${window}`;
+        const key = `${app.id.toLowerCase()}:ratelimit:${tier}:${ip ?? 'unknown'}:${window}`;
         try {
             const count = await this.client.incr(key);
             if (count === 1) {

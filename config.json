@@ -14,6 +14,17 @@
             "rateLimit": {
                 "windowSeconds": 60,
                 "max": 300
+            },
+            "integrity": {
+                "enabled": false,
+                "packageName": "org.sembeacon",
+                "requiredDeviceVerdicts": [
+                    "MEETS_DEVICE_INTEGRITY"
+                ],
+                "verifiedRateLimit": {
+                    "windowSeconds": 60,
+                    "max": 1200
+                }
             }
         },
         {
